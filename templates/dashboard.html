@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Your Mood Dashboard</h2>
+
+{% if chart_data %}
+<div class="chart-container">
+    <canvas id="moodChart"></canvas>
+</div>
+{% else %}
+<p>Write your first journal entry to see your mood chart here!</p>
+{% endif %}
+
+<h3>Your Journal History</h3>
+{% if entries %}
+<table>
+    <tr>
+        <th>Date</th>
+        <th>Entry Preview</th>
+        <th>Emotion</th>
+        <th>Confidence</th>
+    </tr>
+    {% for entry in entries %}
+    <tr>
+        <td>{{ entry['created_at'] }}</td>
+        <td>{{ entry['content'][:70] }}...</td>
+        <td><strong class="emotion-{{ entry['emotion_label'] }}">{{ entry['emotion_label'] | upper }}</strong></td>
+        <td>{{ (entry['emotion_score'] * 100) | int }}%</td>
+    </tr>
+    {% endfor %}
+</table>
+{% else %}
+<p>No entries yet. <a href="{{ url_for('add_entry') }}">Write your first entry!</a></p>
+{% endif %}
+
+<script>
+    const ctx = document.getElementById('moodChart').getContext('2d');
+    const chartData = {{ chart_data | tojson }};
+
+    if (chartData && chartData.length > 0) {
+        const emotionColors = {
+            'anger': 'rgba(220, 53, 69, 0.8)',
+            'disgust': 'rgba(111, 66, 193, 0.8)',
+            'fear': 'rgba(153, 102, 255, 0.8)',
+            'joy': 'rgba(40, 167, 69, 0.8)',
+            'neutral': 'rgba(108, 117, 125, 0.8)',
+            'sadness': 'rgba(111, 66, 193, 0.8)',
+            'surprise': 'rgba(255, 193, 7, 0.8)'
+        };
+
+        const labels = chartData.map(entry => new Date(entry['created_at']).toLocaleDateString());
+        const dataPoints = chartData.map(entry => entry['emotion_score'] * 100);
+        const backgroundColors = chartData.map(entry => emotionColors[entry['emotion_label']] || 'gray');
+
+        const chart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Mood Confidence (%)',
+                    data: dataPoints,
+                    backgroundColor: backgroundColors,
+                    borderColor: 'rgb(0, 0, 0)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 100,
+                        ticks: {
+                            callback: function(value) { return value + '%'; }
+                        }
+                    }
+                }
+            }
+        });
+    }
+</script>
+{% endblock %}
